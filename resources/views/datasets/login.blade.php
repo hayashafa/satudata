@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="container mt-5" style="max-width: 480px;">
+<div class="container mt-5 login-container">
     <h3 class="mb-4">Login</h3>
 
     @if ($errors->any())

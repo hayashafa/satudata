@@ -51,10 +51,15 @@ class AdminUserController extends Controller
         $user = User::findOrFail($id);
 
         // ambil semua dataset milik user ini (dengan kategori & user)
-        $datasets = Dataset::with(['category', 'user'])
-            ->where('user_id', $user->id)
-            ->latest()
-            ->get();
+        // Jika akun dibekukan, dataset-nya disembunyikan sementara.
+        if ($user->isFrozen()) {
+            $datasets = collect();
+        } else {
+            $datasets = Dataset::with(['category', 'user'])
+                ->where('user_id', $user->id)
+                ->latest()
+                ->get();
+        }
 
         // atau kalau sudah buat relasi di model User:
         // $datasets = $user->datasets()->with('category')->latest()->get();

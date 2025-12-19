@@ -21,9 +21,14 @@ class DatasetController extends Controller
         $status  = $request->query('status');
         $userId  = $request->query('user_id');
 
-        // superadmin: bisa melihat semua dataset, atau filter per user jika user_id diberikan
+        // superadmin: bisa melihat semua dataset (hanya milik user yang tidak dibekukan),
+        // atau filter per user jika user_id diberikan
         if (auth()->user()->isSuperAdmin()) {
-            $query = Dataset::with(['category', 'user'])->latest();
+            $query = Dataset::with(['category', 'user'])
+                ->whereHas('user', function ($user) {
+                    $user->where('is_frozen', false);
+                })
+                ->latest();
 
             if (!empty($userId)) {
                 $query->where('user_id', $userId);
@@ -32,6 +37,9 @@ class DatasetController extends Controller
             // admin biasa: hanya lihat dataset miliknya sendiri
             $query = Dataset::with(['category', 'user'])
                 ->where('user_id', auth()->id())
+                ->whereHas('user', function ($user) {
+                    $user->where('is_frozen', false);
+                })
                 ->latest();
         }
 
@@ -64,6 +72,9 @@ class DatasetController extends Controller
     {
         $datasets = Dataset::with(['category', 'user'])
             ->where('status', 'approved')
+            ->whereHas('user', function ($user) {
+                $user->where('is_frozen', false);
+            })
             ->latest()
             ->get();
 

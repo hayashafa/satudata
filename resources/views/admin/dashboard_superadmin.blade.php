@@ -1,5 +1,7 @@
 @extends('layouts.app')
 
+@section('main_container_class', 'container-fluid px-0')
+
 @section('content')
 <div class="container-fluid">
     <div class="row">
@@ -9,43 +11,43 @@
             <ul class="list-group">
                 <li class="list-group-item p-0">
                     <a href="{{ route('admin.dashboard') }}"
-                       class="d-block px-3 py-2 text-white bg-dark-blue text-decoration-none">
+                       class="d-block px-3 py-2 text-white bg-dark-blue text-decoration-none{{ request()->routeIs('admin.dashboard') ? ' sidebar-link-active' : '' }}">
                         Ringkasan Dashboard
                     </a>
                 </li>
                 <li class="list-group-item p-0">
                     <a href="{{ route('admin.datasets.index') }}"
-                       class="d-block px-3 py-2 text-white bg-dark-blue text-decoration-none">
+                       class="d-block px-3 py-2 text-white bg-dark-blue text-decoration-none{{ request()->routeIs('admin.datasets.index') && !request('status') ? ' sidebar-link-active' : '' }}">
                         Semua Dataset
                     </a>
                 </li>
                 <li class="list-group-item p-0">
                     <a href="{{ route('admin.datasets.index', ['status' => 'pending']) }}"
-                       class="d-block px-3 py-2 text-white bg-dark-blue text-decoration-none">
+                       class="d-block px-3 py-2 text-white bg-dark-blue text-decoration-none{{ request()->routeIs('admin.datasets.index') && request('status') === 'pending' ? ' sidebar-link-active' : '' }}">
                         Dataset Menunggu Review
                     </a>
                 </li>
                 <li class="list-group-item p-0">
                     <a href="{{ route('admin.datasets.index', ['status' => 'approved']) }}"
-                       class="d-block px-3 py-2 text-white bg-dark-blue text-decoration-none">
+                       class="d-block px-3 py-2 text-white bg-dark-blue text-decoration-none{{ request()->routeIs('admin.datasets.index') && request('status') === 'approved' ? ' sidebar-link-active' : '' }}">
                         Dataset yang Disetujui
                     </a>
                 </li>
                 <li class="list-group-item p-0">
                     <a href="{{ route('admin.categories.index') }}"
-                       class="d-block px-3 py-2 text-white bg-dark-blue text-decoration-none">
+                       class="d-block px-3 py-2 text-white bg-dark-blue text-decoration-none{{ request()->routeIs('admin.categories.index') ? ' sidebar-link-active' : '' }}">
                         Kategori
                     </a>
                 </li>
                 <li class="list-group-item p-0">
                     <a href="{{ route('admin.users.index') }}"
-                       class="d-block px-3 py-2 text-white bg-dark-blue text-decoration-none">
+                       class="d-block px-3 py-2 text-white bg-dark-blue text-decoration-none{{ request()->routeIs('admin.users.index') ? ' sidebar-link-active' : '' }}">
                         Pengguna Terdaftar
                     </a>
                 </li>
                 <li class="list-group-item p-0">
                     <a href="{{ route('admin.dashboard.rekapanUser') }}"
-                       class="d-block px-3 py-2 text-white bg-dark-blue text-decoration-none">
+                       class="d-block px-3 py-2 text-white bg-dark-blue text-decoration-none{{ request()->routeIs('admin.dashboard.rekapanUser') ? ' sidebar-link-active' : '' }}">
                         Rekapan User
                     </a>
                 </li>

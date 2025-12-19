@@ -3,8 +3,7 @@
 @section('content')
 
 {{-- HEADER BANNER --}}
-<div class="text-white py-5"
-     style="background: linear-gradient(120deg, #003d99, #005dcc); padding: 70px 0;">
+<div class="text-white py-5 page-banner">
     <div class="container">
         <h1 class="fw-bold mb-2">Profil BSN Data</h1>
         <p class="m-0">
@@ -28,7 +27,7 @@
 
             <div class="bg-light p-4 rounded-3 shadow-sm">
                 <h4 class="fw-bold mb-3">Siapa Kami</h4>
-                <p class="text-secondary" style="text-align: justify;">
+                <p class="text-secondary text-justify">
                     Portal BSN Data merupakan gerbang akses data sederhana yang dikembangkan
                     untuk memudahkan publik dalam menemukan dataset yang dikelola oleh
                     Badan Standardisasi Nasional (BSN). Melalui portal ini, pengguna dapat

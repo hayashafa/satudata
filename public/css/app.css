@@ -1,15 +1,181 @@
+body {
+    background-color: #f5f7fb;
+    margin: 0;
+}
+
+.search-bar {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    max-width: 900px;
+    background-color: #ffffff;
+    border-radius: 999px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
+    overflow: hidden;
+}
+
+.search-bar__category {
+    max-width: 180px;
+    border-radius: 999px 0 0 999px;
+    border-right: 1px solid #e5e7eb !important;
+    padding-left: 18px;
+    padding-right: 18px;
+    font-size: 0.9rem;
+}
+
+.search-bar__input {
+    border-radius: 0;
+    box-shadow: none !important;
+    font-size: 0.95rem;
+}
+
+.search-bar__input::placeholder {
+    color: #9ca3af;
+}
+
+.search-bar__button {
+    border: none;
+    border-radius: 0 999px 999px 0;
+    padding-right: 18px;
+    padding-left: 12px;
+    color: #6b7280;
+}
+
+.search-bar__category:focus,
+.search-bar__input:focus,
+.search-bar__button:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+.nav-link {
+    color: #000 !important;
+    font-weight: 500;
+    transition: 0.3s ease;
+}
+
+.nav-link:hover {
+    color: #003c8f !important;
+}
+
+.btn-login,
+.btn-primary {
+    background: linear-gradient(90deg, #0d6efd, #1363df);
+    border: none;
+    color: #fff !important;
+    padding: 6px 22px;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: 0.25s ease;
+}
+
+.btn-login:hover,
+.btn-primary:hover {
+    background: linear-gradient(90deg, #0a58ca, #0d6efd);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0, 80, 200, 0.3);
+}
+
+.hero-title {
+    font-size: 44px;
+}
+
+.hero-image {
+    max-width: 80%;
+    height: auto;
+    object-fit: cover;
+}
+
+.logo-tagline-main {
+    font-size: 11px;
+    color: #003c8f;
+}
+
+.logo-tagline-sub {
+    font-size: 10px;
+    color: #003c8f;
+}
+
+.page-banner {
+    background: linear-gradient(120deg, #003d99, #005dcc);
+    padding: 70px 0;
+}
+
+.text-justify {
+    text-align: justify;
+}
+
+.about-logo-image {
+    max-height: 180px;
+    object-fit: contain;
+}
+
+.about-building-image {
+    max-height: 320px;
+    width: 100%;
+    object-fit: cover;
+}
+
+.login-container {
+    max-width: 480px;
+}
+
+@media (max-width: 576px) {
+    .search-bar {
+        flex-wrap: wrap;
+        border-radius: 18px;
+    }
+
+    .search-bar__category {
+        max-width: 100%;
+        width: 100%;
+        border-right: none !important;
+        border-bottom: 1px solid #e5e7eb !important;
+        border-radius: 18px 18px 0 0;
+    }
+
+    .search-bar__input {
+        border-radius: 0;
+    }
+
+    .search-bar__button {
+        width: 100%;
+        border-radius: 0 0 18px 18px;
+        justify-content: center;
+        display: flex;
+        align-items: center;
+    }
+
+    .hero-title {
+        font-size: 30px;
+        line-height: 1.2;
+    }
+
+    .hero-image {
+        max-width: 100%;
+    }
+
+    .page-banner {
+        padding: 40px 0;
+        text-align: center;
+    }
+
+    .login-container {
+        max-width: 100%;
+    }
+}
+
 .footer-bsn {
-    background-color: #f5f7fb;            /* warna latar belakang luar (abu muda) */
-    padding: 40px 0 20px;
+    background-color: #004f9f;            /* biru utama memenuhi lebar footer */
+    padding: 24px 0 12px;                 /* jarak atas/bawah wajar */
 }
 
 .footer-bsn-box {
-    max-width: 1140px;                    /* lebar kotak */
+    max-width: 1140px;                    /* lebar konten */
     margin: 0 auto;                       /* posisi di tengah */
-    background-color: #004f9f;            /* biru utama (kotak) */
     color: #ffffff;
-    border-radius: 10px;
-    padding: 30px 40px;
+    padding: 0 40px;                      /* hanya padding horizontal */
 }
 
 .footer-bsn-container {
@@ -60,7 +226,7 @@
     text-align: center;
     padding: 8px 0;
     font-size: 13px;
-    margin-top: 15px;
+    margin-top: 0;                        /* hilangkan celah antara konten footer dan bar copyright */
 }
 
 .social-icons {
@@ -87,12 +253,18 @@
     min-height: 100vh;   /* tinggi minimal = tinggi viewport */
     background-color: #004f9f; /* latar belakang sidebar biru */
     padding-top: 24px;
+    position: sticky;    /* sidebar tetap menempel saat discroll */
+    top: 0;              /* menempel ke atas area konten (di bawah navbar) */
+}
+
+.sidebar-bsn.sidebar-hidden {
+    display: none;
 }
 
 .sidebar-bsn .list-group-item {
     background-color: transparent;
     border: 0;
-    margin-bottom: 6px; /* jarak antar menu */
+    margin-bottom: 8px; /* jarak antar menu sedikit lebih lega */
 }
 
 .sidebar-bsn .list-group-item a {
@@ -100,11 +272,19 @@
     padding: 10px 18px;
     font-size: 0.95rem;
     line-height: 1.4;
+    border-radius: 6px;                 /* sudut sedikit membulat seperti tombol */
+    background-color: rgba(255, 255, 255, 0.04); /* sedikit kontras dari latar sidebar */
 }
 
 .sidebar-bsn .list-group-item a:hover {
-    background-color: #0062c7;
+    background-color: #0062c7;          /* warna hover lebih jelas */
     text-decoration: none;
+}
+
+.sidebar-bsn .list-group-item a.sidebar-link-active {
+    background-color: #0062c7;          /* warna aktif */
+    font-weight: 600;
+    border-left: 4px solid #ffcc00;     /* garis kuning di kiri sebagai indikator */
 }
 
 @media (max-width: 991.98px) {

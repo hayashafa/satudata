@@ -12,18 +12,33 @@ class AdminDashboardController extends Controller
     {
         // jumlah dataset yang diupload
         if (auth()->user() && auth()->user()->isSuperAdmin()) {
-            // superadmin: lihat semua dataset yang sudah diupload
-            $totalDatasets = Dataset::count();
+            // superadmin: lihat semua dataset yang sudah diupload (hanya dari user yang tidak dibekukan)
+            $totalDatasets = Dataset::whereHas('user', function ($user) {
+                    $user->where('is_frozen', false);
+                })
+                ->count();
         } else {
             // admin biasa: hanya dataset miliknya sendiri
-            $totalDatasets = Dataset::where('user_id', auth()->id())->count();
+            $totalDatasets = Dataset::where('user_id', auth()->id())
+                ->whereHas('user', function ($user) {
+                    $user->where('is_frozen', false);
+                })
+                ->count();
         }
 
-        // jumlah dataset yang masuk (pending) - global
-        $incomingDatasets = Dataset::where('status', 'pending')->count();
+        // jumlah dataset yang masuk (pending) - global, hanya milik user yang tidak dibekukan
+        $incomingDatasets = Dataset::where('status', 'pending')
+            ->whereHas('user', function ($user) {
+                $user->where('is_frozen', false);
+            })
+            ->count();
 
-        // jumlah dataset yang sudah di-approve (global)
-        $approvedDatasets = Dataset::where('status', 'approved')->count();
+        // jumlah dataset yang sudah di-approve (global), hanya milik user yang tidak dibekukan
+        $approvedDatasets = Dataset::where('status', 'approved')
+            ->whereHas('user', function ($user) {
+                $user->where('is_frozen', false);
+            })
+            ->count();
 
         $totalUsers  = User::count();
 
@@ -31,21 +46,22 @@ class AdminDashboardController extends Controller
 
             // Daftar ringkas 5 dataset terbaru (untuk ditampilkan di dashboard)
             $latestDatasets = Dataset::with(['category', 'user'])
+                ->whereHas('user', function ($user) {
+                    $user->where('is_frozen', false);
+                })
                 ->latest()
                 ->limit(5)
                 ->get();
 
-            // Statistik  tributor dengan upload terbanyak (semua user, diurutkan)
-            $topUploaders = User::withCount([
+            // Statistik kontributor dengan upload terbanyak (semua user, diurutkan)
+            $topUploaders = User::where('is_frozen', false)
+                ->withCount([
                     'datasets',
                     'datasets as approved_datasets_count' => function ($q) {
                         $q->where('status', 'approved');
                     },
                     'datasets as pending_datasets_count' => function ($q) {
                         $q->where('status', 'pending');
-                    },
-                    'datasets as rejected_datasets_count' => function ($q) {
-                        $q->where('status', 'rejected');
                     },
                     'datasets as edited_datasets_count' => function ($q) {
                         $q->whereColumn('updated_at', '>', 'created_at');

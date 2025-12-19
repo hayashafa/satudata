@@ -16,207 +16,9 @@
 
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
-
-    <style>
-        /* ===== Layout dasar: sticky footer ===== */
-        html,
-        body {
-            height: 100%;
-        }
-
-        body {
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            background-color: #f5f7fb;
-        }
-
-        main {
-            flex: 1 0 auto;
-        }
-
-        footer {
-            flex-shrink: 0;
-        }
-
-        /* ===== Footer Custom ===== */
-        .footer-bsn {
-            background-color: #0052a4; /* biru utama */
-            color: #ffffff;
-            font-size: 1rem;
-        }
-
-        .footer-bsn-box {
-            padding-top: 1.25rem;   /* sedikit lebih kecil dari pt-4 default */
-            padding-bottom: 1.25rem;
-        }
-
-        .footer-bsn a {
-            color: #ffffff;
-            text-decoration: none;
-        }
-
-        .footer-bsn a:hover {
-            text-decoration: underline;
-        }
-
-        .footer-title {
-            font-size: 1.15rem;
-            font-weight: 700;
-            letter-spacing: 0.04em;
-        }
-
-        .footer-bsn-column p {
-            margin-bottom: 0.25rem;
-        }
-
-        .footer-bsn-column ul li {
-            margin-bottom: 0.15rem;
-        }
-
-        .footer-bsn-bottom {
-            font-size: 0.9rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.25);
-            padding-top: 0.6rem !important;
-            padding-bottom: 0.6rem !important;
-        }
-
-        /* ===== Search Bar (halaman datasets public) ===== */
-        .search-bar {
-            display: flex;
-            align-items: center;
-            width: 100%;
-            max-width: 900px;
-            background-color: #ffffff;
-            border-radius: 999px;
-            border: 1px solid #e5e7eb;
-            box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
-            overflow: hidden;
-        }
-
-        .search-bar__category {
-            max-width: 180px;
-            border-radius: 999px 0 0 999px;
-            border-right: 1px solid #e5e7eb !important;
-            padding-left: 18px;
-            padding-right: 18px;
-            font-size: 0.9rem;
-        }
-
-        .search-bar__input {
-            border-radius: 0;
-            box-shadow: none !important;
-            font-size: 0.95rem;
-        }
-
-        .search-bar__input::placeholder {
-            color: #9ca3af;
-        }
-
-        .search-bar__button {
-            border: none;
-            border-radius: 0 999px 999px 0;
-            padding-right: 18px;
-            padding-left: 12px;
-            color: #6b7280;
-        }
-
-        .search-bar__category:focus,
-        .search-bar__input:focus,
-        .search-bar__button:focus {
-            outline: none;
-            box-shadow: none;
-        }
-
-        /* ===== Navbar Custom ===== */
-        .nav-link {
-            color: #000 !important;
-            font-weight: 500;
-            transition: 0.3s ease;
-        }
-
-        .nav-link:hover {
-            color: #003c8f !important;
-        }
-
-        /* ===== Dataset Cards ===== */
-        .dataset-card {
-            border-radius: 18px;
-            overflow: hidden;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-
-        .dataset-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
-        }
-
-        .dataset-image {
-            height: 180px;
-            object-fit: cover;
-        }
-
-        .dataset-title {
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-        }
-
-        .dataset-desc {
-            font-size: 0.9rem;
-            color: #6b7280;
-            min-height: 3.2rem;
-        }
-
-        /* Tombol Login */
-        .btn-login,
-        .btn-primary {
-            background: linear-gradient(90deg, #0d6efd, #1363df);
-            border: none;
-            color: #fff !important;
-            padding: 6px 22px;
-            border-radius: 8px;
-            font-weight: 600;
-            transition: 0.25s ease;
-        }
-
-        .btn-login:hover,
-        .btn-primary:hover {
-            background: linear-gradient(90deg, #0a58ca, #0d6efd);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 10px rgba(0, 80, 200, 0.3);
-        }
-        
-        /* ===== Responsive tweak untuk search bar di layar kecil ===== */
-        @media (max-width: 576px) {
-            .search-bar {
-                flex-wrap: wrap;
-                border-radius: 18px;
-            }
-
-            .search-bar__category {
-                max-width: 100%;
-                width: 100%;
-                border-right: none !important;
-                border-bottom: 1px solid #e5e7eb !important;
-                border-radius: 18px 18px 0 0;
-            }
-
-            .search-bar__input {
-                border-radius: 0;
-            }
-
-            .search-bar__button {
-                width: 100%;
-                border-radius: 0 0 18px 18px;
-                justify-content: center;
-                display: flex;
-                align-items: center;
-            }
-        }
-    </style>
 </head>
 
-<body>
+<body class="d-flex flex-column min-vh-100">
 
     <!-- NAVBAR -->
     <nav class="navbar navbar-expand-lg bg-white border-bottom py-2">
@@ -227,12 +29,10 @@
                 <img src="/images/bsn-logo.png" alt="Logo" height="40" class="me-2">
 
                 <div class="d-flex flex-column lh-1">
-                    <span class="fw-bold text-uppercase"
-                          style="font-size: 11px; color:#003c8f;">
+                    <span class="fw-bold text-uppercase logo-tagline-main">
                         Semua untuk satu
                     </span>
-                    <span class="text-uppercase"
-                          style="font-size: 10px; color:#003c8f;">
+                    <span class="text-uppercase logo-tagline-sub">
                         Indonesia
                     </span>
                 </div>
@@ -310,8 +110,14 @@
     
 
     <!-- KONTEN -->
-    <main class="py-4">
-        <div class="container">
+    <main class="py-4 flex-grow-1">
+        <div class="@yield('main_container_class', 'container')">
+            <button id="sidebarToggle"
+                    type="button"
+                    class="btn btn-outline-primary btn-sm mb-3 d-none">
+                <i class="fa fa-bars me-1"></i> Menu Sidebar
+            </button>
+
             @yield('content')
         </div>
     </main>
@@ -321,6 +127,38 @@
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js">
+    </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var sidebar = document.querySelector('.sidebar-bsn');
+            var toggleBtn = document.getElementById('sidebarToggle');
+
+            if (!sidebar || !toggleBtn) {
+                return;
+            }
+
+            // Tampilkan tombol hanya jika di halaman ini ada sidebar
+            toggleBtn.classList.remove('d-none');
+
+            var mainCol = sidebar.nextElementSibling;
+
+            toggleBtn.addEventListener('click', function () {
+                var isHidden = sidebar.classList.toggle('sidebar-hidden');
+
+                if (!mainCol) {
+                    return;
+                }
+
+                if (isHidden) {
+                    mainCol.classList.remove('col-md-10');
+                    mainCol.classList.add('col-md-12');
+                } else {
+                    mainCol.classList.remove('col-md-12');
+                    mainCol.classList.add('col-md-10');
+                }
+            });
+        });
     </script>
 
     @stack('scripts')

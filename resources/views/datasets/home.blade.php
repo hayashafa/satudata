@@ -5,7 +5,7 @@
 <div class="container mt-4">
     <div class="row align-items-center">
         <div class="col-md-6 mb-4 mb-md-0">
-            <h1 class="fw-bold lh-sm" style="font-size: 44px;">
+            <h1 class="fw-bold lh-sm hero-title">
                 Cari Data Apa <span class="text-danger">Hari Ini</span>?
             </h1>
             <p class="mt-3 fw-semibold text-secondary">Mudah, Cepat, dan Akurat</p>
@@ -55,8 +55,7 @@
         <div class="col-md-6 d-flex justify-content-center align-items-center">
             <img src="/images/home1.jpg"
                  alt="Ilustrasi Data"
-                 class="img-fluid rounded shadow-sm"
-                 style="max-width: 80%; height: auto; object-fit: cover;">
+                 class="img-fluid rounded shadow-sm hero-image">
         </div>
     </div>
 </div>

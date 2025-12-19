@@ -3,8 +3,7 @@
 @section('content')
 
 {{-- HEADER BANNER --}}
-<div class="text-white py-5"
-     style="background: linear-gradient(120deg, #003d99, #005dcc); padding: 70px 0;">
+<div class="text-white py-5 page-banner">
     <div class="container">
         <h1 class="fw-bold mb-2">Tentang BSN</h1>
         <p class="m-0">
@@ -31,7 +30,7 @@
             <div class="bg-light p-4 rounded-3 shadow-sm">
                 <h4 class="fw-bold mb-3">Cerita Kami</h4>
 
-                <p class="text-secondary" style="text-align: justify;">
+                <p class="text-secondary text-justify">
                     Badan Standardisasi Nasional (BSN) adalah lembaga pemerintah
                     yang bertanggung jawab mengembangkan, membina, dan mengoordinasikan
                     kegiatan standardisasi di Indonesia. BSN memastikan bahwa standar 
@@ -62,14 +61,12 @@
             {{-- LOGO --}}
             <img src="/images/LogoBSN.jpeg"
                  alt="Logo BSN"
-                 class="img-fluid mb-4 rounded shadow-sm"
-                 style="max-height: 180px; object-fit: contain;">
+                 class="img-fluid mb-4 rounded shadow-sm about-logo-image">
 
             {{-- GEDUNG --}}
             <img src="/images/gedung1.jpeg"
                  alt="Gedung BSN"
-                 class="img-fluid rounded-3 shadow"
-                 style="max-height: 320px; width: 100%; object-fit: cover;">
+                 class="img-fluid rounded-3 shadow about-building-image">
         </div>
 
     </div>

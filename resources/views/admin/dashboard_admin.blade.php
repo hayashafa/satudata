@@ -1,5 +1,7 @@
 @extends('layouts.app')
 
+@section('main_container_class', 'container-fluid px-0')
+
 @section('content')
 <div class="container-fluid">
     <div class="row">
@@ -9,25 +11,25 @@
             <ul class="list-group">
                 <li class="list-group-item p-0">
                     <a href="{{ route('admin.dashboard') }}"
-                       class="d-block px-3 py-2 text-white bg-dark-blue text-decoration-none">
+                       class="d-block px-3 py-2 text-white bg-dark-blue text-decoration-none{{ request()->routeIs('admin.dashboard') ? ' sidebar-link-active' : '' }}">
                         Ringkasan Dashboard
                     </a>
                 </li>
                 <li class="list-group-item p-0">
                     <a href="{{ route('admin.datasets.index') }}"
-                       class="d-block px-3 py-2 text-white bg-dark-blue text-decoration-none">
+                       class="d-block px-3 py-2 text-white bg-dark-blue text-decoration-none{{ request()->routeIs('admin.datasets.index') ? ' sidebar-link-active' : '' }}">
                         Semua Dataset Diupload
                     </a>
                 </li>
                 <li class="list-group-item p-0">
                     <a href="{{ route('admin.datasets.approved') }}"
-                       class="d-block px-3 py-2 text-white bg-dark-blue text-decoration-none">
+                       class="d-block px-3 py-2 text-white bg-dark-blue text-decoration-none{{ request()->routeIs('admin.datasets.approved') ? ' sidebar-link-active' : '' }}">
                         Dataset yang Disetujui
                     </a>
                 </li>
                 <li class="list-group-item p-0">
                     <a href="{{ route('admin.datasets.create') }}"
-                       class="d-block px-3 py-2 text-white bg-dark-blue text-decoration-none">
+                       class="d-block px-3 py-2 text-white bg-dark-blue text-decoration-none{{ request()->routeIs('admin.datasets.create') ? ' sidebar-link-active' : '' }}">
                         Tambah Dataset Baru
                     </a>
                 </li>
@@ -118,7 +120,7 @@
                 </tr>
                 <tr>
                     <th>Unit Kerja</th>
-                    <td>{{ auth()->user()->workplace ?? '-' }}</td>
+                    <td>{{ auth()->user()->workplace ?: 'Belum diisi' }}</td>
                 </tr>
                 <tr>
                     <th>Jenis Kelamin</th>
@@ -129,7 +131,7 @@
                         @elseif ($gender === 'P' || strtolower($gender) === 'perempuan')
                             Perempuan
                         @else
-                            -
+                            Belum diisi
                         @endif
                     </td>
                 </tr>
