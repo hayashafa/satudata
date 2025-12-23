@@ -197,7 +197,11 @@
                                                 </td>
                                                 <td>{{ optional($data->user)->name ?? '-' }}</td>
                                                 <td class="text-nowrap">
-                                                    <a href="{{ route('datasets.detail', $data->id) }}" class="btn btn-sm btn-outline-secondary">Detail</a>
+                                                    @if ($data->status === 'approved')
+                                                        <a href="{{ route('datasets.detail', $data->id) }}" class="btn btn-sm btn-outline-secondary">Detail</a>
+                                                    @else
+                                                        <a href="{{ route('admin.datasets.show', $data->id) }}" class="btn btn-sm btn-outline-secondary">Detail</a>
+                                                    @endif
                                                 </td>
                                             </tr>
                                         @endforeach

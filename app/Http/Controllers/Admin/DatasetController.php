@@ -81,6 +81,21 @@ class DatasetController extends Controller
         return view('admin.datasets.approved', compact('datasets'));
     }
 
+    /**
+     * Menampilkan detail satu dataset di area admin.
+     */
+    public function show($id)
+    {
+        $dataset = Dataset::with(['category', 'user'])->findOrFail($id);
+
+        // Admin biasa hanya boleh melihat dataset miliknya sendiri
+        if (!auth()->user()->isSuperAdmin() && $dataset->user_id !== auth()->id()) {
+            abort(403);
+        }
+
+        return view('admin.datasets.show', compact('dataset'));
+    }
+
     public function store(Request $request)
     {
         $request->validate([
