@@ -15,9 +15,5 @@ use App\Http\Controllers\Api\DatasetApiController;
 |
 */
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
-});
-
 // Public datasets listing API
 Route::get('/datasets', [DatasetApiController::class, 'index']);

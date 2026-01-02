@@ -9,13 +9,15 @@ class AuthCustom
 {
     public function handle($request, Closure $next)
     {
-        // Terima kalau user sudah login via Laravel Auth OR ada flag session lama
-        if (! Auth::check() && ! session('is_logged_in')) {
+        // Backend auth sudah di Yii: Laravel hanya menyimpan token + user info di session.
+        if (! session('yii_api_token') || ! session('yii_user')) {
             return redirect()->route('login');
         }
 
-        // Jika user login tapi akunnya dibekukan, blokir akses ke area yang memakai middleware ini
-        if (Auth::check() && method_exists(Auth::user(), 'isFrozen') && Auth::user()->isFrozen()) {
+        $yiiUser = session('yii_user');
+
+        // Jika akun dibekukan, blokir akses ke area yang memakai middleware ini
+        if (is_array($yiiUser) && !empty($yiiUser['is_frozen'])) {
             abort(403, 'Akun Anda dibekukan oleh administrator.');
         }
 

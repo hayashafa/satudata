@@ -8,7 +8,7 @@
 
         {{-- SIDEBAR --}}
         <div class="col-md-2 sidebar-bsn">
-            @if(auth()->user() && auth()->user()->isSuperAdmin())
+            @if(session('yii_user.role') === 'superadmin')
                 <ul class="list-group">
                     <li class="list-group-item p-0">
                         <a href="{{ route('admin.dashboard') }}"
@@ -181,8 +181,8 @@
                         {{-- AKSI --}}
                         <td class="d-flex flex-column gap-1">
                             {{-- TOMBOL APPROVE (hanya untuk superadmin & dataset pending) --}}
-                            @if(auth()->user()->isSuperAdmin() && $data->status === 'pending')
-                                <form action="{{ route('datasets.approve', $data->id) }}"
+                            @if(session('yii_user.role') === 'superadmin' && $data->status === 'pending')
+                                <form action="{{ route('admin.datasets.approve', $data->id) }}"
                                       method="POST"
                                       class="d-inline"
                                       onsubmit="return confirm('Approve dataset ini?')">
@@ -194,8 +194,8 @@
                             @endif
 
                             @if(
-                                auth()->user()->isSuperAdmin() ||
-                                (auth()->id() === $data->user_id && $data->status !== 'approved')
+                                session('yii_user.role') === 'superadmin' ||
+                                ((int) session('yii_user.id') === (int) $data->user_id && $data->status !== 'approved')
                             )
                                 {{-- TOMBOL EDIT --}}
                                 <a href="{{ route('admin.datasets.edit', $data->id) }}" 

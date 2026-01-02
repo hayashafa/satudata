@@ -3,39 +3,57 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
-use App\Models\Dataset;
 use Illuminate\Http\Request;
+use App\Services\YiiApiClient;
 
 class AdminUserController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('auth.custom');
+    }
+
+    protected function toObject($value)
+    {
+        if (is_array($value)) {
+            $obj = new \stdClass();
+            foreach ($value as $k => $v) {
+                $obj->{$k} = $this->toObject($v);
+            }
+            return $obj;
+        }
+
+        if (is_object($value)) {
+            foreach (get_object_vars($value) as $k => $v) {
+                $value->{$k} = $this->toObject($v);
+            }
+            return $value;
+        }
+
+        return $value;
+    }
+
     // daftar semua user/admin dengan pencarian & pengurutan
     public function index(Request $request)
     {
         $search = $request->query('search');
         $sort   = $request->query('sort', 'latest'); // latest, name_az, name_za
 
-        $query = User::query();
+        /** @var YiiApiClient $yii */
+        $yii = app(YiiApiClient::class);
+        $res = $yii->get('/api/admin/users', [
+            'search' => $search,
+            'sort' => $sort,
+        ]);
 
-        if (!empty($search)) {
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
-            });
+        $rows = [];
+        if (($res['success'] ?? false) && is_array($res['data']['data'] ?? null)) {
+            $rows = $res['data']['data'];
         }
 
-        switch ($sort) {
-            case 'name_az':
-                $query->orderBy('name', 'asc');
-                break;
-            case 'name_za':
-                $query->orderBy('name', 'desc');
-                break;
-            default:
-                $query->latest();
-        }
-
-        $users = $query->get();
+        $users = collect($rows)->map(function ($row) {
+            return $this->toObject($row);
+        });
 
         return view('admin.users.index', [
             'users'  => $users,
@@ -47,51 +65,77 @@ class AdminUserController extends Controller
     // DETAIL: 1 user + semua dataset yg dia upload
     public function show($id)
     {
-        // ambil user
-        $user = User::findOrFail($id);
+        /** @var YiiApiClient $yii */
+        $yii = app(YiiApiClient::class);
+        $res = $yii->get('/api/admin/users/' . $id);
 
-        // ambil semua dataset milik user ini (dengan kategori & user)
-        // Jika akun dibekukan, dataset-nya disembunyikan sementara.
-        if ($user->isFrozen()) {
-            $datasets = collect();
-        } else {
-            $datasets = Dataset::with(['category', 'user'])
-                ->where('user_id', $user->id)
-                ->latest()
-                ->get();
+        if (!($res['success'] ?? false) || !is_array($res['data']['data'] ?? null)) {
+            abort(404);
         }
 
-        // atau kalau sudah buat relasi di model User:
-        // $datasets = $user->datasets()->with('category')->latest()->get();
+        $payload = $res['data']['data'];
+        $user = $this->toObject($payload['user'] ?? []);
+        $datasets = collect(is_array($payload['datasets'] ?? null) ? $payload['datasets'] : [])->map(function ($row) {
+            return $this->toObject($row);
+        });
 
         return view('admin.users.show', compact('user', 'datasets'));
     }
 
     // hapus user
-    public function destroy(User $user)
+    public function destroy($id)
     {
-        $user->delete();
-        return redirect()->route('admin.users.index')
-            ->with('success', 'User berhasil dihapus.');
+        /** @var YiiApiClient $yii */
+        $yii = app(YiiApiClient::class);
+        $res = $yii->delete('/api/admin/users/' . $id);
+
+        if (!($res['success'] ?? false)) {
+            $error = 'Tidak dapat menghapus pengguna ini.';
+            if (is_array($res['data'] ?? null) && !empty($res['data']['error'])) {
+                $error = (string) $res['data']['error'];
+            }
+
+            return redirect()->route('admin.users.index')->with('error', $error);
+        }
+
+        return redirect()->route('admin.users.index')->with('success', 'User berhasil dihapus.');
     }
 
     // bekukan user (blokir akses admin/upload)
-    public function freeze(User $user)
+    public function freeze($id)
     {
-        $user->is_frozen = true;
-        $user->save();
+        /** @var YiiApiClient $yii */
+        $yii = app(YiiApiClient::class);
+        $res = $yii->patchJson('/api/admin/users/' . $id . '/freeze');
 
-        return redirect()->route('admin.users.index')
-            ->with('success', 'User berhasil dibekukan.');
+        if (!($res['success'] ?? false)) {
+            $error = 'Gagal membekukan user.';
+            if (is_array($res['data'] ?? null) && !empty($res['data']['error'])) {
+                $error = (string) $res['data']['error'];
+            }
+
+            return redirect()->route('admin.users.index')->with('error', $error);
+        }
+
+        return redirect()->route('admin.users.index')->with('success', 'User berhasil dibekukan.');
     }
 
     // aktifkan kembali user yang dibekukan
-    public function unfreeze(User $user)
+    public function unfreeze($id)
     {
-        $user->is_frozen = false;
-        $user->save();
+        /** @var YiiApiClient $yii */
+        $yii = app(YiiApiClient::class);
+        $res = $yii->patchJson('/api/admin/users/' . $id . '/unfreeze');
 
-        return redirect()->route('admin.users.index')
-            ->with('success', 'Status user berhasil diubah menjadi aktif.');
+        if (!($res['success'] ?? false)) {
+            $error = 'Gagal mengubah status user.';
+            if (is_array($res['data'] ?? null) && !empty($res['data']['error'])) {
+                $error = (string) $res['data']['error'];
+            }
+
+            return redirect()->route('admin.users.index')->with('error', $error);
+        }
+
+        return redirect()->route('admin.users.index')->with('success', 'Status user berhasil diubah menjadi aktif.');
     }
 }

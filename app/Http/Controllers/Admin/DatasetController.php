@@ -3,12 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Dataset;
-use App\Models\Category;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Carbon\Carbon;
+use App\Services\YiiApiClient;
 
+// Frontend (tampilan dan routing) menggunakan Laravel.
+// Seluruh proses backend dan akses database dikelola penuh oleh sistem Yii.
 class DatasetController extends Controller
 {
     public function __construct()
@@ -16,67 +15,87 @@ class DatasetController extends Controller
         $this->middleware('auth.custom');
     }
 
+    protected function toObject($value)
+    {
+        if (is_array($value)) {
+            $obj = new \stdClass();
+            foreach ($value as $k => $v) {
+                $obj->{$k} = $this->toObject($v);
+            }
+            return $obj;
+        }
+
+        if (is_object($value)) {
+            foreach (get_object_vars($value) as $k => $v) {
+                $value->{$k} = $this->toObject($v);
+            }
+            return $value;
+        }
+
+        return $value;
+    }
+
     public function index(Request $request)
     {
-        $status  = $request->query('status');
-        $userId  = $request->query('user_id');
+        $status = $request->query('status');
+        $userId = $request->query('user_id');
 
-        // superadmin: bisa melihat semua dataset (hanya milik user yang tidak dibekukan),
-        // atau filter per user jika user_id diberikan
-        if (auth()->user()->isSuperAdmin()) {
-            $query = Dataset::with(['category', 'user'])
-                ->whereHas('user', function ($user) {
-                    $user->where('is_frozen', false);
-                })
-                ->latest();
-
-            if (!empty($userId)) {
-                $query->where('user_id', $userId);
-            }
-        } else {
-            // admin biasa: hanya lihat dataset miliknya sendiri
-            $query = Dataset::with(['category', 'user'])
-                ->where('user_id', auth()->id())
-                ->whereHas('user', function ($user) {
-                    $user->where('is_frozen', false);
-                })
-                ->latest();
-        }
-
-        if ($status === 'pending') {
-            $query->where('status', 'pending');
-            $title = 'Daftar Dataset yang Masuk (Menunggu Review)';
-        } elseif ($status === 'approved') {
-            $query->where('status', 'approved');
-            $title = 'Daftar Dataset yang Sudah Disetujui';
-        } else {
-            $title = 'Daftar Dataset yang Diupload';
-        }
-
-        $datasets = $query->get();
-
-        return view('admin.datasets.index', [
-            'datasets' => $datasets,
-            'status'   => $status,
-            'title'    => $title,
+        /** @var YiiApiClient $yii */
+        $yii = app(YiiApiClient::class);
+        $res = $yii->get('/api/admin/datasets', [
+            'status' => $status,
+            'user_id' => $userId,
         ]);
+
+        $rows = [];
+        if (($res['success'] ?? false) && is_array($res['data']['data'] ?? null)) {
+            $rows = $res['data']['data'];
+        }
+
+        $datasets = collect($rows)->map(function ($row) {
+            return $this->toObject($row);
+        });
+
+        $title = match ($status) {
+            'pending'  => 'Dataset Menunggu Review',
+            'approved' => 'Dataset yang Disetujui',
+            default    => 'Daftar Dataset yang Diupload',
+        };
+
+        return view('admin.datasets.index', compact('datasets', 'status', 'title'));
     }
     public function create()
     {
-        $categories = Category::all();
+        /** @var YiiApiClient $yii */
+        $yii = app(YiiApiClient::class);
+        $res = $yii->get('/api/categories');
+
+        $rows = [];
+        if (($res['success'] ?? false) && is_array($res['data']['data'] ?? null)) {
+            $rows = $res['data']['data'];
+        }
+
+        $categories = collect($rows)->map(function ($row) {
+            return $this->toObject($row);
+        });
         return view('admin.datasets.create', compact('categories'));
     }
 
     // Daftar dataset yang sudah di-approve (hanya untuk dibaca)
     public function approvedIndex()
     {
-        $datasets = Dataset::with(['category', 'user'])
-            ->where('status', 'approved')
-            ->whereHas('user', function ($user) {
-                $user->where('is_frozen', false);
-            })
-            ->latest()
-            ->get();
+        /** @var YiiApiClient $yii */
+        $yii = app(YiiApiClient::class);
+        $res = $yii->get('/api/admin/datasets', ['status' => 'approved']);
+
+        $rows = [];
+        if (($res['success'] ?? false) && is_array($res['data']['data'] ?? null)) {
+            $rows = $res['data']['data'];
+        }
+
+        $datasets = collect($rows)->map(function ($row) {
+            return $this->toObject($row);
+        });
 
         return view('admin.datasets.approved', compact('datasets'));
     }
@@ -86,12 +105,15 @@ class DatasetController extends Controller
      */
     public function show($id)
     {
-        $dataset = Dataset::with(['category', 'user'])->findOrFail($id);
+        /** @var YiiApiClient $yii */
+        $yii = app(YiiApiClient::class);
+        $res = $yii->get('/api/admin/datasets/' . $id);
 
-        // Admin biasa hanya boleh melihat dataset miliknya sendiri
-        if (!auth()->user()->isSuperAdmin() && $dataset->user_id !== auth()->id()) {
-            abort(403);
+        if (!($res['success'] ?? false) || !is_array($res['data']['data'] ?? null)) {
+            abort(404);
         }
+
+        $dataset = $this->toObject($res['data']['data']);
 
         return view('admin.datasets.show', compact('dataset'));
     }
@@ -111,51 +133,73 @@ class DatasetController extends Controller
             'image'       => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
-        $data = $request->only(['title', 'description', 'category_id', 'year']);
-        $data['user_id']  = Auth::id();
-        $data['creator']  = Auth::user()->name ?? 'Admin';
-        $data['status']   = 'pending';   // dataset baru = masuk
+        $multipart = [
+            ['name' => 'title', 'contents' => (string) $request->input('title')],
+            ['name' => 'description', 'contents' => (string) $request->input('description', '')],
+            ['name' => 'category_id', 'contents' => (string) $request->input('category_id')],
+            ['name' => 'year', 'contents' => (string) $request->input('year')],
+        ];
+
         if ($request->hasFile('file')) {
-            // Simpan ke storage default: storage/app/datasets
-            $data['file_path'] = $request->file('file')->store('datasets');
+            $file = $request->file('file');
+            $multipart[] = [
+                'name' => 'file',
+                'contents' => fopen($file->getRealPath(), 'r'),
+                'filename' => $file->getClientOriginalName(),
+            ];
         }
 
         if ($request->hasFile('image')) {
-            $data['image'] = $request->file('image')->store('images', 'public');
+            $img = $request->file('image');
+            $multipart[] = [
+                'name' => 'image',
+                'contents' => fopen($img->getRealPath(), 'r'),
+                'filename' => $img->getClientOriginalName(),
+            ];
         }
 
-        Dataset::create($data);
+        /** @var YiiApiClient $yii */
+        $yii = app(YiiApiClient::class);
+        $res = $yii->postMultipart('/api/admin/datasets', $multipart);
 
-        return redirect()->route('admin.datasets.index')
-            ->with('success', 'Dataset berhasil ditambahkan.');
+        if (!($res['success'] ?? false)) {
+            $error = 'Dataset gagal ditambahkan.';
+            if (is_array($res['data'] ?? null) && !empty($res['data']['error'])) {
+                $error = (string) $res['data']['error'];
+            }
+
+            return redirect()->back()->with('error', $error)->withInput();
+        }
+
+        return redirect()->route('admin.datasets.index')->with('success', 'Dataset berhasil ditambahkan.');
     }
 
     public function edit($id)
-   {
-    $dataset = Dataset::findOrFail($id);
-    $categories = Category::all();
-
-    if (!auth()->user()->isSuperAdmin()) {
-        // Admin biasa hanya boleh edit dataset miliknya yg belum approved
-        if ($dataset->user_id !== auth()->id() || $dataset->status === 'approved') {
-            abort(403); // Forbidden
+    {
+        /** @var YiiApiClient $yii */
+        $yii = app(YiiApiClient::class);
+        $resDataset = $yii->get('/api/admin/datasets/' . $id);
+        if (!($resDataset['success'] ?? false) || !is_array($resDataset['data']['data'] ?? null)) {
+            abort(404);
         }
-    }
 
-    return view('admin.datasets.edit', compact('dataset', 'categories'));
-}
+        $dataset = $this->toObject($resDataset['data']['data']);
+
+        $resCategories = $yii->get('/api/categories');
+        $rows = [];
+        if (($resCategories['success'] ?? false) && is_array($resCategories['data']['data'] ?? null)) {
+            $rows = $resCategories['data']['data'];
+        }
+
+        $categories = collect($rows)->map(function ($row) {
+            return $this->toObject($row);
+        });
+
+        return view('admin.datasets.edit', compact('dataset', 'categories'));
+    }
 
     public function update(Request $request, $id)
     {
-        $dataset = Dataset::findOrFail($id);
-
-        // Admin biasa hanya boleh mengupdate dataset miliknya sendiri yang belum approved
-        if (!auth()->user()->isSuperAdmin()) {
-            if ($dataset->user_id !== auth()->id() || $dataset->status === 'approved') {
-                abort(403);
-            }
-        }
-
         $request->validate([
             'title'       => 'required|string',
             'description' => 'nullable|string',
@@ -165,54 +209,80 @@ class DatasetController extends Controller
             'image'       => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
-        $data = $request->only(['title', 'description', 'category_id', 'year']);
-        $data['user_id'] = Auth::id();
+        $multipart = [
+            ['name' => 'title', 'contents' => (string) $request->input('title')],
+            ['name' => 'description', 'contents' => (string) $request->input('description', '')],
+            ['name' => 'category_id', 'contents' => (string) $request->input('category_id')],
+            ['name' => 'year', 'contents' => (string) $request->input('year')],
+        ];
 
         if ($request->hasFile('file')) {
-            // Simpan ke storage default: storage/app/datasets
-            $data['file_path'] = $request->file('file')->store('datasets');
+            $file = $request->file('file');
+            $multipart[] = [
+                'name' => 'file',
+                'contents' => fopen($file->getRealPath(), 'r'),
+                'filename' => $file->getClientOriginalName(),
+            ];
         }
 
         if ($request->hasFile('image')) {
-            $data['image'] = $request->file('image')->store('images', 'public');
+            $img = $request->file('image');
+            $multipart[] = [
+                'name' => 'image',
+                'contents' => fopen($img->getRealPath(), 'r'),
+                'filename' => $img->getClientOriginalName(),
+            ];
         }
 
-        $dataset->update($data);
+        /** @var YiiApiClient $yii */
+        $yii = app(YiiApiClient::class);
+        $res = $yii->postMultipart('/api/admin/datasets/' . $id . '/update', $multipart);
 
-        return redirect()->route('admin.datasets.index')
-            ->with('success', 'Dataset berhasil diperbarui.');
+        if (!($res['success'] ?? false)) {
+            $error = 'Dataset gagal diperbarui.';
+            if (is_array($res['data'] ?? null) && !empty($res['data']['error'])) {
+                $error = (string) $res['data']['error'];
+            }
+
+            return redirect()->back()->with('error', $error)->withInput();
+        }
+
+        return redirect()->route('admin.datasets.index')->with('success', 'Dataset berhasil diperbarui.');
     }
 
     public function approve($id)
     {
-        $dataset = Dataset::findOrFail($id);
+        /** @var YiiApiClient $yii */
+        $yii = app(YiiApiClient::class);
+        $res = $yii->postJson('/api/admin/datasets/' . $id . '/approve');
 
-        // Jika belum pernah disetujui, isi approved_at dengan tanggal saat ini
-        $dataUpdate = ['status' => 'approved'];
+        if (!($res['success'] ?? false)) {
+            $error = 'Dataset gagal di-approve.';
+            if (is_array($res['data'] ?? null) && !empty($res['data']['error'])) {
+                $error = (string) $res['data']['error'];
+            }
 
-        if (is_null($dataset->approved_at)) {
-            $dataUpdate['approved_at'] = now();
+            return redirect()->back()->with('error', $error);
         }
-
-        $dataset->update($dataUpdate);
 
         return redirect()->back()->with('success', 'Dataset berhasil di-approve.');
     }
 
     public function destroy($id)
     {
-        $dataset = Dataset::findOrFail($id);
+        /** @var YiiApiClient $yii */
+        $yii = app(YiiApiClient::class);
+        $res = $yii->delete('/api/admin/datasets/' . $id);
 
-        // Admin biasa hanya boleh menghapus dataset miliknya sendiri yang belum approved
-        if (!auth()->user()->isSuperAdmin()) {
-            if ($dataset->user_id !== auth()->id() || $dataset->status === 'approved') {
-                abort(403);
+        if (!($res['success'] ?? false)) {
+            $error = 'Dataset gagal dihapus.';
+            if (is_array($res['data'] ?? null) && !empty($res['data']['error'])) {
+                $error = (string) $res['data']['error'];
             }
+
+            return redirect()->route('admin.datasets.index')->with('error', $error);
         }
 
-        $dataset->delete();
-
-        return redirect()->route('admin.datasets.index')
-            ->with('success', 'Dataset berhasil dihapus.');
+        return redirect()->route('admin.datasets.index')->with('success', 'Dataset berhasil dihapus.');
     }
 }

@@ -15,8 +15,10 @@ class RoleMiddleware
      */
     public function handle($request, Closure $next, $role)
 {
-    if (!auth()->check() || auth()->user()->role !== $role) {
-        abort(403); // forbidden
+    $yiiUser = session('yii_user');
+
+    if (!is_array($yiiUser) || (($yiiUser['role'] ?? null) !== $role)) {
+        abort(403);
     }
 
     return $next($request);

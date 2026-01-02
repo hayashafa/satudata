@@ -3,72 +3,58 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Dataset;
-use App\Models\User;
+use App\Services\YiiApiClient;
+use Illuminate\Http\Request;
 
 class AdminDashboardController extends Controller
 {
-    public function index()
+    protected function toObject($value)
     {
-        // jumlah dataset yang diupload
-        if (auth()->user() && auth()->user()->isSuperAdmin()) {
-            // superadmin: lihat semua dataset yang sudah diupload (hanya dari user yang tidak dibekukan)
-            $totalDatasets = Dataset::whereHas('user', function ($user) {
-                    $user->where('is_frozen', false);
-                })
-                ->count();
-        } else {
-            // admin biasa: hanya dataset miliknya sendiri
-            $totalDatasets = Dataset::where('user_id', auth()->id())
-                ->whereHas('user', function ($user) {
-                    $user->where('is_frozen', false);
-                })
-                ->count();
+        if (is_array($value)) {
+            $obj = new \stdClass();
+            foreach ($value as $k => $v) {
+                $obj->{$k} = $this->toObject($v);
+            }
+            return $obj;
         }
 
-        // jumlah dataset yang masuk (pending) - global, hanya milik user yang tidak dibekukan
-        $incomingDatasets = Dataset::where('status', 'pending')
-            ->whereHas('user', function ($user) {
-                $user->where('is_frozen', false);
-            })
-            ->count();
+        if (is_object($value)) {
+            foreach (get_object_vars($value) as $k => $v) {
+                $value->{$k} = $this->toObject($v);
+            }
+            return $value;
+        }
 
-        // jumlah dataset yang sudah di-approve (global), hanya milik user yang tidak dibekukan
-        $approvedDatasets = Dataset::where('status', 'approved')
-            ->whereHas('user', function ($user) {
-                $user->where('is_frozen', false);
-            })
-            ->count();
+        return $value;
+    }
 
-        $totalUsers  = User::count();
+    public function index()
+    {
+        $yiiUser = session('yii_user');
+        $role = is_array($yiiUser) ? ($yiiUser['role'] ?? null) : null;
 
-        if (auth()->user() && auth()->user()->isSuperAdmin()) {
+        /** @var YiiApiClient $yii */
+        $yii = app(YiiApiClient::class);
+        $res = $yii->get('/api/admin/dashboard-summary');
 
-            // Daftar ringkas 5 dataset terbaru (untuk ditampilkan di dashboard)
-            $latestDatasets = Dataset::with(['category', 'user'])
-                ->whereHas('user', function ($user) {
-                    $user->where('is_frozen', false);
-                })
-                ->latest()
-                ->limit(5)
-                ->get();
+        $payload = is_array($res['data'] ?? null) ? $res['data'] : [];
 
-            // Statistik kontributor dengan upload terbanyak (semua user, diurutkan)
-            $topUploaders = User::where('is_frozen', false)
-                ->withCount([
-                    'datasets',
-                    'datasets as approved_datasets_count' => function ($q) {
-                        $q->where('status', 'approved');
-                    },
-                    'datasets as pending_datasets_count' => function ($q) {
-                        $q->where('status', 'pending');
-                    },
-                    'datasets as edited_datasets_count' => function ($q) {
-                        $q->whereColumn('updated_at', '>', 'created_at');
-                    },
-                ])
-                ->orderByDesc('datasets_count')
-                ->get();
+        $totalDatasets = (int) ($payload['totalDatasets'] ?? 0);
+        $incomingDatasets = (int) ($payload['incomingDatasets'] ?? 0);
+        $approvedDatasets = (int) ($payload['approvedDatasets'] ?? 0);
+        $totalUsers = (int) ($payload['totalUsers'] ?? 0);
+
+        if ($role === 'superadmin') {
+            $latestDatasetsRaw = is_array($payload['latestDatasets'] ?? null) ? $payload['latestDatasets'] : [];
+            $topUploadersRaw = is_array($payload['topUploaders'] ?? null) ? $payload['topUploaders'] : [];
+
+            $latestDatasets = collect($latestDatasetsRaw)->map(function ($row) {
+                return $this->toObject($row);
+            });
+
+            $topUploaders = collect($topUploadersRaw)->map(function ($row) {
+                return $this->toObject($row);
+            });
 
             return view('admin.dashboard_superadmin', compact(
                 'totalDatasets',
@@ -80,36 +66,23 @@ class AdminDashboardController extends Controller
             ));
         }
 
-        return view('admin.dashboard_admin', compact(
-            'totalDatasets',
-            'approvedDatasets'
-        ));
+        return view('admin.dashboard_admin', compact('totalDatasets', 'approvedDatasets'));
     }
 
     public function apiSummary()
     {
-        if (auth()->user() && auth()->user()->isSuperAdmin()) {
-            $totalDatasets = Dataset::count();
-            $incomingDatasets = Dataset::where('status', 'pending')->count();
-            $approvedDatasets = Dataset::where('status', 'approved')->count();
-        } else {
-            $totalDatasets = Dataset::where('user_id', auth()->id())->count();
-            $incomingDatasets = Dataset::where('status', 'pending')
-                ->where('user_id', auth()->id())
-                ->count();
-            $approvedDatasets = Dataset::where('status', 'approved')
-                ->where('user_id', auth()->id())
-                ->count();
-        }
+        /** @var YiiApiClient $yii */
+        $yii = app(YiiApiClient::class);
+        $res = $yii->get('/api/admin/dashboard-summary');
 
-        $totalUsers = User::count();
+        $payload = is_array($res['data'] ?? null) ? $res['data'] : [];
 
         return response()->json([
-            'totalDatasets'    => $totalDatasets,
-            'incomingDatasets' => $incomingDatasets,
-            'approvedDatasets' => $approvedDatasets,
-            'totalUsers'       => $totalUsers,
-        ]);
+            'totalDatasets'    => (int) ($payload['totalDatasets'] ?? 0),
+            'incomingDatasets' => (int) ($payload['incomingDatasets'] ?? 0),
+            'approvedDatasets' => (int) ($payload['approvedDatasets'] ?? 0),
+            'totalUsers'       => (int) ($payload['totalUsers'] ?? 0),
+        ], ($res['status'] ?? 200));
     }
 
     /**
@@ -117,26 +90,22 @@ class AdminDashboardController extends Controller
      */
     public function rekapanUser()
     {
-        // Hanya superadmin yang boleh mengakses
-        abort_unless(auth()->user() && auth()->user()->isSuperAdmin(), 403);
+        $yiiUser = session('yii_user');
+        $role = is_array($yiiUser) ? ($yiiUser['role'] ?? null) : null;
+        abort_unless($role === 'superadmin', 403);
 
-        $topUploaders = User::withCount([
-                'datasets',
-                'datasets as approved_datasets_count' => function ($q) {
-                    $q->where('status', 'approved');
-                },
-                'datasets as pending_datasets_count' => function ($q) {
-                    $q->where('status', 'pending');
-                },
-                'datasets as rejected_datasets_count' => function ($q) {
-                    $q->where('status', 'rejected');
-                },
-                'datasets as edited_datasets_count' => function ($q) {
-                    $q->whereColumn('updated_at', '>', 'created_at');
-                },
-            ])
-            ->orderByDesc('datasets_count')
-            ->get();
+        /** @var YiiApiClient $yii */
+        $yii = app(YiiApiClient::class);
+        $res = $yii->get('/api/admin/rekapan-user');
+
+        $rows = [];
+        if (($res['success'] ?? false) && is_array($res['data']['data'] ?? null)) {
+            $rows = $res['data']['data'];
+        }
+
+        $topUploaders = collect($rows)->map(function ($row) {
+            return $this->toObject($row);
+        });
 
         return view('admin.rekapan_user', compact('topUploaders'));
     }

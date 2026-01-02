@@ -8,7 +8,7 @@
 
         {{-- SIDEBAR --}}
         <div class="col-md-2 sidebar-bsn">
-            @if(auth()->user() && auth()->user()->isSuperAdmin())
+            @if(session('yii_user.role') === 'superadmin')
                 <ul class="list-group">
                     <li class="list-group-item p-0">
                         <a href="{{ route('admin.dashboard') }}"

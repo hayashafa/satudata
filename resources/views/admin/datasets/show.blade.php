@@ -8,7 +8,7 @@
 
         {{-- SIDEBAR --}}
         <div class="col-md-2 sidebar-bsn">
-            @if(auth()->user() && auth()->user()->isSuperAdmin())
+            @if(session('yii_user.role') === 'superadmin')
                 <ul class="list-group">
                     <li class="list-group-item p-0">
                         <a href="{{ route('admin.dashboard') }}"
@@ -83,14 +83,14 @@
                     <a href="{{ route('admin.datasets.index') }}" class="btn btn-outline-secondary btn-sm">Kembali ke Daftar</a>
 
                     @if(
-                        auth()->user()->isSuperAdmin() ||
-                        (auth()->id() === $dataset->user_id && $dataset->status !== 'approved')
+                        session('yii_user.role') === 'superadmin' ||
+                        ((int) session('yii_user.id') === (int) $dataset->user_id && $dataset->status !== 'approved')
                     )
                         <a href="{{ route('admin.datasets.edit', $dataset->id) }}" class="btn btn-warning btn-sm">Edit</a>
                     @endif
 
-                    @if(auth()->user()->isSuperAdmin() && $dataset->status === 'pending')
-                        <form action="{{ route('datasets.approve', $dataset->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Approve dataset ini?')">
+                    @if(session('yii_user.role') === 'superadmin' && $dataset->status === 'pending')
+                        <form action="{{ route('admin.datasets.approve', $dataset->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Approve dataset ini?')">
                             @csrf
                             <button type="submit" class="btn btn-success btn-sm">Setujui</button>
                         </form>
@@ -132,10 +132,10 @@
                                 <dd class="col-sm-8">{{ optional($dataset->user)->name ?? '-' }}</dd>
 
                                 <dt class="col-sm-4">Dibuat</dt>
-                                <dd class="col-sm-8">{{ $dataset->created_at ? $dataset->created_at->format('d M Y H:i') : '-' }}</dd>
+                                <dd class="col-sm-8">{{ $dataset->created_at ?? '-' }}</dd>
 
                                 <dt class="col-sm-4">Terakhir Update</dt>
-                                <dd class="col-sm-8">{{ $dataset->updated_at ? $dataset->updated_at->format('d M Y H:i') : '-' }}</dd>
+                                <dd class="col-sm-8">{{ $dataset->updated_at ?? '-' }}</dd>
                             </dl>
                         </div>
                     </div>

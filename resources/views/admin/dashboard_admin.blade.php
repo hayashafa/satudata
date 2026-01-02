@@ -99,12 +99,12 @@
             <table class="table table-bordered">
                 <tr>
                     <th>Nama Asli</th>
-                    <td>{{ auth()->user()->name }}</td>
+                    <td>{{ session('yii_user.name') ?? '-' }}</td>
                 </tr>
                 <tr>
                     <th>Peran</th>
                     <td>
-                        @php($role = auth()->user()->role)
+                        @php($role = session('yii_user.role'))
                         @if ($role === 'superadmin')
                             Super Admin
                         @elseif ($role === 'admin')
@@ -116,16 +116,16 @@
                 </tr>
                 <tr>
                     <th>Email</th>
-                    <td>{{ auth()->user()->email }}</td>
+                    <td>{{ session('yii_user.email') ?? '-' }}</td>
                 </tr>
                 <tr>
                     <th>Unit Kerja</th>
-                    <td>{{ auth()->user()->workplace ?: 'Belum diisi' }}</td>
+                    <td>{{ session('yii_user.workplace') ?: 'Belum diisi' }}</td>
                 </tr>
                 <tr>
                     <th>Jenis Kelamin</th>
                     <td>
-                        @php($gender = auth()->user()->gender)
+                        @php($gender = session('yii_user.gender'))
                         @if ($gender === 'L' || strtolower($gender) === 'laki-laki')
                             Laki-laki
                         @elseif ($gender === 'P' || strtolower($gender) === 'perempuan')

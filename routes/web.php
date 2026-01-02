@@ -2,9 +2,8 @@
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
-use App\Models\Category;
+use App\Services\YiiApiClient;
 
 // =========================
 //  IMPORT CONTROLLER YANG BENAR
@@ -26,7 +25,19 @@ use App\Http\Controllers\Admin\AdminProfileController;
 |--------------------------------------------------------------------------
 */
 Route::get('/', function () {
-    $categories = Category::all();
+    /** @var YiiApiClient $yii */
+    $yii = app(YiiApiClient::class);
+    $res = $yii->get('/api/categories');
+
+    $items = [];
+    if (($res['success'] ?? false) && is_array($res['data']['data'] ?? null)) {
+        $items = $res['data']['data'];
+    }
+
+    $categories = collect($items)->map(function ($row) {
+        return (object) $row;
+    });
+
     return view('datasets.home', compact('categories'));
 })->name('home');
 Route::get('/profil-bsn', fn() => view('datasets.profil'))->name('profil');
@@ -55,7 +66,7 @@ Route::get('/data/download/{id}', [PublicDatasetController::class, 'downloadFile
 |--------------------------------------------------------------------------
 */
 Route::get('/login', function () {
-    if (Auth::check()) return redirect()->route('admin.dashboard');
+    if (session('yii_api_token') && session('yii_user')) return redirect()->route('admin.dashboard');
     return view('datasets.login');
 })->name('login');
 
@@ -71,23 +82,40 @@ Route::post('/login', function (Request $request) {
         'password' => 'required',
     ]);
 
-    $user = \App\Models\User::where('email', $request->email)->first();
+    /** @var YiiApiClient $yii */
+    $yii = app(YiiApiClient::class);
+    $res = $yii->postJson('/api/auth/login', [
+        'email' => $request->email,
+        'password' => $request->password,
+    ]);
 
-    if ($user && Hash::check($request->password, $user->password)) {
+    if (!($res['success'] ?? false)) {
+        $error = 'Email atau password salah.';
+        if (is_array($res['data'] ?? null) && !empty($res['data']['error'])) {
+            $error = (string) $res['data']['error'];
+        }
 
-        Auth::login($user);
-
-        session([
-            'is_logged_in' => true,
-            'admin_id'     => $user->id,
-        ]);
-
-        return redirect()->route('admin.dashboard');
+        return back()->withErrors([
+            'email' => $error,
+        ])->withInput();
     }
 
-    return back()->withErrors([
-        'email' => 'Email atau password salah.'
-    ])->withInput();
+    $token = $res['data']['access_token'] ?? null;
+    $yiiUser = $res['data']['user'] ?? null;
+    if (!$token || !is_array($yiiUser)) {
+        return back()->withErrors([
+            'email' => 'Login gagal. Response backend tidak valid.',
+        ])->withInput();
+    }
+
+    session([
+        'is_logged_in' => true,
+        'admin_id'     => $yiiUser['id'] ?? null,
+        'yii_api_token' => $token,
+        'yii_user' => $yiiUser,
+    ]);
+
+    return redirect()->route('admin.dashboard');
 })->name('login.submit');
 
 /*
@@ -100,9 +128,6 @@ Route::post('/logout', function () {
     session()->flush();
     return redirect()->route('home');
 })->name('logout');
-
-Route::post('/datasets/{id}/approve', [DatasetController::class, 'approve'])
-    ->name('datasets.approve');
 
     // route khusus superadmin
 Route::prefix('admin')->name('admin.')->middleware(['auth.custom', 'role:superadmin'])->group(function () {

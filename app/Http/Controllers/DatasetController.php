@@ -2,90 +2,78 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Dataset;
-use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use App\Services\YiiApiClient;
 
 class DatasetController extends Controller
 {
+    protected function toObject($value)
+    {
+        if (is_array($value)) {
+            $obj = new \stdClass();
+            foreach ($value as $k => $v) {
+                $obj->{$k} = $this->toObject($v);
+            }
+            return $obj;
+        }
+
+        if (is_object($value)) {
+            foreach (get_object_vars($value) as $k => $v) {
+                $value->{$k} = $this->toObject($v);
+            }
+            return $value;
+        }
+
+        return $value;
+    }
+
+    protected function yii(): YiiApiClient
+    {
+        return app(YiiApiClient::class);
+    }
     /**
      * Halaman daftar dataset publik dengan pencarian sederhana.
      */
     public function publicIndex(Request $request)
     {
-        $q       = $request->query('q');
-        $type    = $request->query('type');    // id kategori atau null/empty untuk semua
-        $year    = $request->query('year');
-        $creator = $request->query('creator'); // instansi/OPD pembuat data
-        $format  = $request->query('format');  // ekstensi file: pdf, xlsx, csv, txt, dll
-        $sort    = $request->query('sort', 'latest'); // latest, oldest, title_az, title_za
+        $filters = [
+            'q'       => $request->query('q'),
+            'type'    => $request->query('type'),
+            'year'    => $request->query('year'),
+            'creator' => $request->query('creator'),
+            'format'  => $request->query('format'),
+            'sort'    => $request->query('sort', 'latest'),
+        ];
 
-        $query = Dataset::with(['category', 'user'])
-            ->where('status', 'approved')
-            ->whereHas('user', function ($user) {
-                $user->where('is_frozen', false);
-            });
-
-        // Filter berdasarkan kategori jika dipilih
-        if (!empty($type)) {
-            $query->where('category_id', $type);
+        $resDatasets = $this->yii()->get('/api/datasets', array_filter($filters, fn ($v) => $v !== null));
+        $items = [];
+        if (($resDatasets['success'] ?? false) && is_array($resDatasets['data']['data'] ?? null)) {
+            $items = $resDatasets['data']['data'];
         }
 
-        // Filter tahun rilis (jika tersedia)
-        if (!empty($year)) {
-            $query->where('year', $year);
+        $datasets = collect($items)->map(function ($row) {
+            return $this->toObject($row);
+        });
+
+        $resCategories = $this->yii()->get('/api/categories');
+        $catItems = [];
+        if (($resCategories['success'] ?? false) && is_array($resCategories['data']['data'] ?? null)) {
+            $catItems = $resCategories['data']['data'];
         }
 
-        // Filter instansi/OPD berdasarkan kolom creator (jika diisi)
-        if (!empty($creator)) {
-            $query->where('creator', 'like', "%{$creator}%");
-        }
-
-        // Filter format file berdasarkan ekstensi di file_path
-        if (!empty($format)) {
-            $format = strtolower($format);
-            $query->whereNotNull('file_path')
-                ->whereRaw('LOWER(file_path) LIKE ?', ['%.' . $format]);
-        }
-
-        // Filter pencarian teks
-        if ($q) {
-            $query->where(function ($sub) use ($q) {
-                    $sub->where('title', 'like', "%{$q}%")
-                        ->orWhere('description', 'like', "%{$q}%");
-                })
-                ->orWhereHas('category', function ($cat) use ($q) {
-                    $cat->where('name', 'like', "%{$q}%");
-                });
-        }
-
-        // Sorting hasil
-        switch ($sort) {
-            case 'oldest':
-                $query->oldest();
-                break;
-            case 'title_az':
-                $query->orderBy('title', 'asc');
-                break;
-            case 'title_za':
-                $query->orderBy('title', 'desc');
-                break;
-            default: // latest
-                $query->latest();
-        }
-
-        $datasets   = $query->get();
-        $categories = Category::all();
+        $categories = collect($catItems)->map(function ($row) {
+            return $this->toObject($row);
+        });
 
         return view('datasets.public', [
             'datasets'   => $datasets,
-            'q'          => $q,
-            'type'       => $type,
-            'year'       => $year,
-            'creator'    => $creator,
-            'format'     => $format,
-            'sort'       => $sort,
+            'q'          => $filters['q'],
+            'type'       => $filters['type'],
+            'year'       => $filters['year'],
+            'creator'    => $filters['creator'],
+            'format'     => $filters['format'],
+            'sort'       => $filters['sort'],
             'categories' => $categories,
         ]);
     }
@@ -95,16 +83,14 @@ class DatasetController extends Controller
      */
     public function showPublic($id)
     {
-        $dataset = Dataset::with(['category', 'user'])
-            ->where('status', 'approved')
-            ->whereHas('user', function ($user) {
-                $user->where('is_frozen', false);
-            })
-            ->findOrFail($id);
+        $res = $this->yii()->get('/api/datasets/' . $id);
+        if (!($res['success'] ?? false) || !is_array($res['data']['data'] ?? null)) {
+            abort(404);
+        }
 
-        return view('datasets.detail', [
-            'dataset' => $dataset,
-        ]);
+        $dataset = $this->toObject($res['data']['data']);
+
+        return view('datasets.detail', compact('dataset'));
     }
 
     /**
@@ -112,49 +98,25 @@ class DatasetController extends Controller
      */
     public function viewFile($id)
     {
-        if (auth()->check()) {
-            // Admin / superadmin: boleh melihat semua dataset berdasarkan ID
-            $dataset = Dataset::findOrFail($id);
-        } else {
-            // Pengunjung publik: hanya dataset approved milik user yang tidak dibekukan
-            $dataset = Dataset::where('status', 'approved')
-                ->whereHas('user', function ($user) {
-                    $user->where('is_frozen', false);
-                })
-                ->findOrFail($id);
-        }
-
-        if (!$dataset->file_path) {
+        $res = $this->yii()->get('/api/datasets/' . $id);
+        if (!($res['success'] ?? false) || !is_array($res['data']['data'] ?? null)) {
             abort(404);
         }
 
-        $relativePath = $dataset->file_path;
+        $dataset = $this->toObject($res['data']['data']);
 
-        // Cek di lokasi baru (storage/app/...)
-        $storageDisk = 'local';
-
-        if (!Storage::exists($relativePath)) {
-            // Jika tidak ada, coba cek di lokasi lama (storage/app/public/...)
-            if (!Storage::disk('public')->exists($relativePath)) {
-                abort(404);
-            }
-
-            $storageDisk = 'public';
+        if (empty($dataset->file_path) || !Storage::disk('public')->exists($dataset->file_path)) {
+            abort(404);
         }
 
-        $extension = strtolower(pathinfo($relativePath, PATHINFO_EXTENSION));
+        $fullPath = Storage::disk('public')->path($dataset->file_path);
+        $extension = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
 
         if ($extension === 'csv') {
-            $content = Storage::disk($storageDisk)->get($relativePath);
-            $lines   = preg_split("/(\r\n|\n|\r)/", trim($content));
-
-            $rows = [];
-            foreach ($lines as $line) {
-                if ($line === '') {
-                    continue;
-                }
-                $rows[] = str_getcsv($line);
-            }
+            $content = file($fullPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+            $rows = array_map(function ($line) {
+                return str_getcsv($line);
+            }, $content);
 
             return view('datasets.csv_view', [
                 'dataset' => $dataset,
@@ -162,30 +124,13 @@ class DatasetController extends Controller
             ]);
         }
 
-        if (in_array($extension, ['xlsx', 'xls'])) {
-            if ($storageDisk === 'public') {
-                $publicUrl = asset('storage/' . ltrim($relativePath, '/'));
-            } else {
-                $publicUrl = route('datasets.downloadFile', $dataset->id);
-            }
-
-            $fileUrl   = urlencode($publicUrl);
-            $viewerUrl = "https://view.officeapps.live.com/op/view.aspx?src={$fileUrl}";
-
-            return view('datasets.excel_view', [
-                'dataset'   => $dataset,
-                'viewerUrl' => $viewerUrl,
-            ]);
+        if (in_array($extension, ['xls', 'xlsx'])) {
+            // Untuk saat ini, arahkan saja ke download; implementasi viewer khusus bisa ditambahkan nanti
+            return redirect()->route('datasets.downloadFile', $dataset->id);
         }
 
-        $basePath = $storageDisk === 'public'
-            ? storage_path('app/public/')
-            : storage_path('app/');
-
-        return response()->file(
-            $basePath . $relativePath,
-            ['Cache-Control' => 'no-store, max-age=0']
-        );
+        // Default: file biasa, kirim response file langsung
+        return response()->file($fullPath);
     }
 
     /**
@@ -193,40 +138,19 @@ class DatasetController extends Controller
      */
     public function downloadFile($id)
     {
-        if (auth()->check()) {
-            // Admin / superadmin: bisa mengunduh semua dataset berdasarkan ID
-            $dataset = Dataset::findOrFail($id);
-        } else {
-            // Pengunjung publik: hanya dataset approved milik user yang tidak dibekukan
-            $dataset = Dataset::where('status', 'approved')
-                ->whereHas('user', function ($user) {
-                    $user->where('is_frozen', false);
-                })
-                ->findOrFail($id);
-        }
-
-        if (!$dataset->file_path) {
+        $res = $this->yii()->get('/api/datasets/' . $id);
+        if (!($res['success'] ?? false) || !is_array($res['data']['data'] ?? null)) {
             abort(404);
         }
 
-        $relativePath = $dataset->file_path;
+        $dataset = $this->toObject($res['data']['data']);
 
-        // Lokasi baru (storage/app/...)
-        $storageDisk = 'local';
-
-        if (!Storage::exists($relativePath)) {
-            // Fallback ke lokasi lama (storage/app/public/...)
-            if (!Storage::disk('public')->exists($relativePath)) {
-                abort(404);
-            }
-
-            $storageDisk = 'public';
+        if (empty($dataset->file_path) || !Storage::disk('public')->exists($dataset->file_path)) {
+            abort(404);
         }
 
-        $basePath = $storageDisk === 'public'
-            ? storage_path('app/public/')
-            : storage_path('app/');
+        $fullPath = Storage::disk('public')->path($dataset->file_path);
 
-        return response()->download($basePath . $relativePath);
+        return response()->download($fullPath);
     }
 }

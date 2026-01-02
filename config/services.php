@@ -31,4 +31,10 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'yii' => [
+        'base_url' => env('YII_API_BASE_URL'),
+        'token'    => env('YII_API_TOKEN'),
+        'timeout'  => env('YII_API_TIMEOUT', 10),
+    ],
+
 ];
