@@ -80,8 +80,15 @@ class AdminDatasetsController extends Controller
             $query->andWhere(['d.status' => $status]);
         }
 
+        // Untuk admin biasa:
+        // - Halaman "Semua Dataset Diupload" (tanpa status) dan "Dataset Menunggu Review" (pending)
+        //   hanya menampilkan dataset miliknya sendiri.
+        // - Halaman "Dataset yang Disetujui" (status=approved) boleh melihat semua dataset approved,
+        //   tidak dibatasi user_id.
         if ($me && ($me->role ?? null) !== 'superadmin') {
-            $query->andWhere(['d.user_id' => $me->id]);
+            if ($status !== 'approved') {
+                $query->andWhere(['d.user_id' => $me->id]);
+            }
         } elseif ($userId) {
             $query->andWhere(['d.user_id' => $userId]);
         }
@@ -104,8 +111,16 @@ class AdminDatasetsController extends Controller
             throw new NotFoundHttpException('Dataset tidak ditemukan.');
         }
 
-        if ($me && ($me->role ?? null) !== 'superadmin' && (int) ($dataset['user_id'] ?? 0) !== (int) $me->id) {
-            throw new ForbiddenHttpException();
+        // Untuk admin biasa, boleh melihat dataset milik admin lain
+        // jika statusnya sudah approved. Dataset yang belum approved
+        // tetap hanya boleh diakses pemiliknya atau superadmin.
+        if ($me && ($me->role ?? null) !== 'superadmin') {
+            $isOwner = (int) ($dataset['user_id'] ?? 0) === (int) $me->id;
+            $isApproved = ($dataset['status'] ?? null) === 'approved';
+
+            if (!$isOwner && !$isApproved) {
+                throw new ForbiddenHttpException();
+            }
         }
 
         return ['data' => $dataset];

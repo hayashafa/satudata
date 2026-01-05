@@ -91,8 +91,13 @@ Route::post('/login', function (Request $request) {
 
     if (!($res['success'] ?? false)) {
         $error = 'Email atau password salah.';
-        if (is_array($res['data'] ?? null) && !empty($res['data']['error'])) {
+
+        if (!empty($res['error'])) {
+            $error = (string) $res['error'];
+        } elseif (is_array($res['data'] ?? null) && !empty($res['data']['error'])) {
             $error = (string) $res['data']['error'];
+        } elseif (!empty($res['raw'])) {
+            $error = 'Login gagal. Response backend: ' . (string) $res['raw'];
         }
 
         return back()->withErrors([
