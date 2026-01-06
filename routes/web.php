@@ -143,6 +143,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth.custom', 'role:superad
 
     // Manajemen user (hapus/block admin nakal)
     Route::get('/users', [AdminUserController::class, 'index'])->name('users.index');
+    Route::get('/users/create', [AdminUserController::class, 'create'])->name('users.create');
+    Route::post('/users', [AdminUserController::class, 'store'])->name('users.store');
     Route::patch('/users/{user}/freeze', [AdminUserController::class, 'freeze'])->name('users.freeze');
     Route::patch('/users/{user}/unfreeze', [AdminUserController::class, 'unfreeze'])->name('users.unfreeze');
     Route::delete('/users/{user}', [AdminUserController::class, 'destroy'])->name('users.destroy');

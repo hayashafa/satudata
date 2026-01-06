@@ -76,6 +76,7 @@ $config = [
                 'DELETE api/admin/categories/<id:\\d+>' => 'api/admin-categories/delete',
 
                 'GET api/admin/users' => 'api/admin-users/index',
+                'POST api/admin/users' => 'api/admin-users/create',
                 'GET api/admin/users/<id:\\d+>' => 'api/admin-users/view',
                 'PATCH api/admin/users/<id:\\d+>/freeze' => 'api/admin-users/freeze',
                 'PATCH api/admin/users/<id:\\d+>/unfreeze' => 'api/admin-users/unfreeze',

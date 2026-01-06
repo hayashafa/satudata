@@ -54,17 +54,17 @@
         </div>
 
         <div class="col-md-10">
-            <h2>Daftar Pengguna</h2>
+            <h2 class="mb-3">Daftar Pengguna</h2>
 
             @if(session('success'))
                 <div class="alert alert-success">{{ session('success') }}</div>
             @endif
 
-            <form method="GET" action="{{ route('admin.users.index') }}" class="row g-2 mb-3">
-                <div class="col-md-6">
+            <form method="GET" action="{{ route('admin.users.index') }}" class="row g-2 mb-3 align-items-center">
+                <div class="col-lg-5 col-md-6 col-12 mb-2 mb-md-0">
                     <input type="text" name="search" value="{{ $search ?? request('search') }}" class="form-control" placeholder="Cari nama atau email pengguna">
                 </div>
-                <div class="col-md-3">
+                <div class="col-lg-2 col-md-3 col-6 mb-2 mb-md-0">
                     <select name="sort" class="form-select">
                         @php($currentSort = $sort ?? request('sort', 'latest'))
                         <option value="latest" {{ $currentSort === 'latest' ? 'selected' : '' }}>Terbaru</option>
@@ -72,13 +72,16 @@
                         <option value="name_za" {{ $currentSort === 'name_za' ? 'selected' : '' }}>Nama Z - A</option>
                     </select>
                 </div>
-                <div class="col-md-3 d-flex gap-2">
-                    <button class="btn btn-primary" type="submit">Terapkan</button>
+                <div class="col-lg-3 col-md-3 col-6 mb-2 mb-md-0 d-flex gap-2">
+                    <button class="btn btn-primary flex-fill" type="submit">Terapkan</button>
                     <a href="{{ route('admin.users.index') }}" class="btn btn-secondary">Reset</a>
+                </div>
+                <div class="col-lg-2 col-12 mt-2 mt-lg-0 d-flex justify-content-lg-end">
+                    <a href="{{ route('admin.users.create') }}" class="btn btn-success w-100 w-lg-auto">Tambah Pengguna</a>
                 </div>
             </form>
 
-            <table class="table table-bordered">
+            <table class="table table-bordered table-responsive-md">
                 <thead>
                     <tr>
                         <th>No</th>

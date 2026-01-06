@@ -62,6 +62,43 @@ class AdminUserController extends Controller
         ]);
     }
 
+    // form tambah user/admin (hanya superadmin di-route)
+    public function create()
+    {
+        return view('admin.users.create');
+    }
+
+    // simpan user/admin baru via Yii API
+    public function store(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email',
+            'password' => 'required|string|min:6',
+            'role' => 'required|in:admin,superadmin',
+        ]);
+
+        /** @var YiiApiClient $yii */
+        $yii = app(YiiApiClient::class);
+        $res = $yii->postJson('/api/admin/users', [
+            'name' => $request->input('name'),
+            'email' => $request->input('email'),
+            'password' => $request->input('password'),
+            'role' => $request->input('role', 'admin'),
+        ]);
+
+        if (!($res['success'] ?? false)) {
+            $error = 'Gagal menambahkan pengguna baru.';
+            if (is_array($res['data'] ?? null) && !empty($res['data']['error'])) {
+                $error = (string) $res['data']['error'];
+            }
+
+            return back()->withInput()->with('error', $error);
+        }
+
+        return redirect()->route('admin.users.index')->with('success', 'Pengguna berhasil ditambahkan.');
+    }
+
     // DETAIL: 1 user + semua dataset yg dia upload
     public function show($id)
     {
